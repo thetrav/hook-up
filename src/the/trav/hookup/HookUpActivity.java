@@ -1,6 +1,6 @@
 package the.trav.hookup;
 
-import javax.microedition.khronos.opengles.GL10;
+import java.util.HashMap;
 
 import org.anddev.andengine.engine.Engine;
 import org.anddev.andengine.engine.camera.Camera;
@@ -9,22 +9,16 @@ import org.anddev.andengine.engine.options.EngineOptions.ScreenOrientation;
 import org.anddev.andengine.engine.options.resolutionpolicy.RatioResolutionPolicy;
 import org.anddev.andengine.entity.scene.Scene;
 import org.anddev.andengine.entity.scene.background.ColorBackground;
-import org.anddev.andengine.entity.scene.menu.MenuScene;
-import org.anddev.andengine.entity.scene.menu.MenuScene.IOnMenuItemClickListener;
-import org.anddev.andengine.entity.scene.menu.item.IMenuItem;
-import org.anddev.andengine.entity.scene.menu.item.TextMenuItem;
-import org.anddev.andengine.entity.scene.menu.item.decorator.ColorMenuItemDecorator;
 import org.anddev.andengine.entity.text.Text;
 import org.anddev.andengine.opengl.font.Font;
 import org.anddev.andengine.opengl.texture.TextureOptions;
 import org.anddev.andengine.opengl.texture.atlas.bitmap.BitmapTextureAtlas;
 import org.anddev.andengine.ui.activity.BaseGameActivity;
-import org.anddev.andengine.util.HorizontalAlign;
 
 import android.graphics.Color;
 import android.graphics.Typeface;
 
-public class HookUpActivity extends BaseGameActivity implements IOnMenuItemClickListener {
+public class HookUpActivity extends BaseGameActivity {
 	private static final int CAMERA_WIDTH = 480;
 	private static final int CAMERA_HEIGHT = 720;
 	
@@ -36,7 +30,7 @@ public class HookUpActivity extends BaseGameActivity implements IOnMenuItemClick
 	private Font font = null;
 	private Camera camera = null; 
 	
-	private Scene scene = null;
+	private HashMap<String, Scene> scenes = new HashMap<String, Scene>();
 	
 	@Override
 	public Engine onLoadEngine() {
@@ -58,44 +52,54 @@ public class HookUpActivity extends BaseGameActivity implements IOnMenuItemClick
 
 	@Override
 	public Scene onLoadScene() {
-		scene = new Scene();
+		Scene scene = new Scene();		
+		scene.setBackground(new ColorBackground(0.0f, 0.9f, 0.0f));
 
-		scene.setBackground(new ColorBackground(0.9f, 0.9f, 0.9f));
+		scenes.put("main", scene);
+//		scenes.put("menu", this.createMenuScene(new int[]{MENU_HOST, MENU_JOIN}, new String[]{"HOST", "JOIN"}));
+		scenes.put("hosting", createHostingScene()); 
+
+		scene.setChildScene(scenes.get("hosting"));
 		
-		Scene menuScene = this.createMenuScene(new int[]{MENU_HOST, MENU_JOIN}, new String[]{"HOST", "JOIN"});
-		scene.setChildScene(menuScene);
 		
 		return scene;
 	}
 	
 	
 	
-	private MenuScene createMenuScene(int[] ids, String[] labels) {
-		final MenuScene menuScene = new MenuScene(this.camera);
+	private Scene createMenuScene(int[] ids, String[] labels) {
+		final Scene menuScene = new Scene();
+		menuScene.setBackground(new ColorBackground(0.0f, 0.0f, 0.9f));
 		for(int i=0; i< ids.length; i++) {
-			addMenuItem(menuScene, ids[i], labels[i]);
+			addMenuItem(50, 10 + i*100, menuScene, ids[i], labels[i]);
 		}
 
-		menuScene.buildAnimations();
-
-		menuScene.setBackgroundEnabled(false);
-
-		menuScene.setOnMenuItemClickListener(this);
 		return menuScene;
 	}
 
-	private void addMenuItem(final MenuScene menuScene, int id, String label) {
-		final IMenuItem menuItem = new ColorMenuItemDecorator(new TextMenuItem(id, this.font, label), 1.0f,0.0f,0.0f, 0.0f,0.0f,0.0f);
-		menuItem.setBlendFunction(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
-		menuScene.addMenuItem(menuItem);
+	private void addMenuItem(float x, float y, final Scene menuScene, final int id, final String label) {
+		final Text menuItem = new Text(x, y, font, label){
+			@Override
+			public boolean onAreaTouched(org.anddev.andengine.input.touch.TouchEvent pSceneTouchEvent, float pTouchAreaLocalX, float pTouchAreaLocalY) {
+				onMenuItemClicked(menuScene, id);
+				return super.onAreaTouched(pSceneTouchEvent, pTouchAreaLocalX, pTouchAreaLocalY);
+			};
+		};
+		menuScene.attachChild(menuItem);
+		menuScene.registerTouchArea(menuItem);
 	}
 	
-	private Scene startHosting() {
+	private Scene createHostingScene() {
 		Scene hostingScene = new Scene();
-		hostingScene.setBackground(new ColorBackground(0.9f, 0.9f, 0.9f));
-		Text text = new Text(10,10, font, "Waiting for client");
+		hostingScene.setBackground(new ColorBackground(0.9f, 0.0f, 0.0f));
+		Text text = new Text(50, 10, font, "Waiting...");
 		hostingScene.attachChild(text);
 		return hostingScene;
+	}
+	
+	private void startHosting() {
+		Scene scene = scenes.get("menu");
+		scene.setChildScene(scenes.get("hosting"));
 	}
 
 	@Override
@@ -103,25 +107,18 @@ public class HookUpActivity extends BaseGameActivity implements IOnMenuItemClick
 		
 	}
 
-	@Override
-	public boolean onMenuItemClicked(MenuScene menuScene, IMenuItem menuItem, float x, float y) {
-		switch(menuItem.getID()) {
+	public void onMenuItemClicked(Scene menuScene, int id) {
+		switch(id) {
 			case MENU_HOST:
-				scene.reset();
-				
-				scene.clearChildScene();
-				menuScene.back();
-				
-				scene.setChildScene(startHosting());
-				scene.reset();
-				return true;
+				startHosting();
+				break;
 				
 			case MENU_JOIN:
 //				scene.clearChildScene();
 //				menuScene.reset();
-				return true;
+				break;
 			default :
-				return false;
+				break;
 		}
 	}    
 }
